@@ -1,7 +1,33 @@
-{ stdenv, fetchurl, substituteAll, pkgconfig, glib, itstool, libxml2, xorg
-, accountsservice, libX11, gnome3, systemd, autoreconfHook, dconf
-, gtk3, libcanberra-gtk3, pam, libtool, gobject-introspection, plymouth
-, librsvg, coreutils, xwayland, nixos-icons, fetchpatch }:
+{ stdenv
+, fetchurl
+, substituteAll
+, meson
+, ninja
+, pkg-config
+, glib
+, itstool
+, libxml2
+, xorg
+, accountsservice
+, libX11
+, gnome3
+, systemd
+, dconf
+, gtk3
+, libcanberra-gtk3
+, pam
+, libselinux
+, keyutils
+, audit
+, gobject-introspection
+, plymouth
+, librsvg
+, coreutils
+, xwayland
+, dbus_libs
+, nixos-icons
+, fetchpatch
+}:
 
 let
 
@@ -19,44 +45,61 @@ in
 
 stdenv.mkDerivation rec {
   pname = "gdm";
-  version = "3.34.1";
+  version = "3.38.0";
 
   src = fetchurl {
     url = "mirror://gnome/sources/gdm/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
-    sha256 = "1lyqvcwxhwxklbxn4xjswjzr6fhjix6h28mi9ypn34wdm9bzcpg8";
+    sha256 = "1fimhklb204rflz8k345756jikgbw8113hms3zlcwk6975f43m26";
   };
 
-  # Only needed to make it build
-  preConfigure = ''
-    substituteInPlace ./configure --replace "/usr/bin/X" "${xorg.xorgserver.out}/bin/X"
+  preConfigure =
+    # Upstream checks some common paths to find an `X` binary. We are NixOS.
+    # We are smarter.
+  ''
+    echo #!/bin/sh > build-aux/find-x-server.sh
+    echo "echo ${stdenv.lib.getBin xorg.xorgserver}/bin/X" >> build-aux/find-x-server.sh
+    patchShebangs build-aux/find-x-server.sh
   '';
 
-  initialVT = "7";
-
-  configureFlags = [
-    "--sysconfdir=/etc"
-    "--localstatedir=/var"
-    "--with-plymouth=yes"
-    "--enable-gdm-xsession"
-    "--with-initial-vt=${initialVT}"
-    "--with-systemdsystemunitdir=$(out)/etc/systemd/system"
-    "--with-udevdir=$(out)/lib/udev"
+  mesonFlags = [
+    "-Dgdm-xsession=true"
+    # TODO: Setup a default-path? https://gitlab.gnome.org/GNOME/gdm/-/blob/6fc40ac6aa37c8ad87c32f0b1a5d813d34bf7770/meson_options.txt#L6
+    "-Dinitial-vt=7"
+    "-Dudev-dir=${placeholder "out"}/lib/udev/rules.d"
+    "-Dsystemdsystemunitdir=${placeholder "out"}/lib/systemd/system"
+    "-Dsystemduserunitdir=${placeholder "out"}/lib/systemd/user"
+    "-Dsysconfsubdir=${placeholder "out"}/etc"
   ];
 
-  nativeBuildInputs = [ pkgconfig libxml2 itstool autoreconfHook libtool dconf ];
+  nativeBuildInputs = [
+    pkg-config
+    meson
+    itstool
+    dconf
+    ninja
+  ];
   buildInputs = [
-    glib accountsservice systemd
-    gobject-introspection libX11 gtk3
-    libcanberra-gtk3 pam plymouth librsvg
+    glib
+    accountsservice
+    systemd
+    gobject-introspection
+    libX11
+    gtk3
+    libcanberra-gtk3
+    pam
+    plymouth
+    libselinux
+    keyutils
+    audit
+    xorg.libXdmcp
   ];
-
-  enableParallelBuilding = true;
 
   patches = [
     # Change hardcoded paths to nix store paths.
     (substituteAll {
       src = ./fix-paths.patch;
       inherit coreutils plymouth xwayland;
+      dbusLibs = dbus_libs;
     })
 
     # The following patches implement certain environment variables in GDM which are set by
@@ -76,12 +119,12 @@ stdenv.mkDerivation rec {
     ./reset-environment.patch
   ];
 
-  installFlags = [
-    "sysconfdir=$(out)/etc"
-    "dbusconfdir=$(out)/etc/dbus-1/system.d"
-  ];
+  # TODO: why is this suddenly necessary?
+  postInstall = ''
+    glib-compile-schemas $out/share/glib-2.0/schemas
+  '';
 
-  preInstall = ''
+  postFixup = ''
     schema_dir=${glib.makeSchemaPath "$out" "${pname}-${version}"}
     install -D ${override} $schema_dir/org.gnome.login-screen.gschema.override
   '';
