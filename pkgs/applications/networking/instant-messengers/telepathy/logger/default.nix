@@ -1,5 +1,5 @@
 { stdenv, fetchurl, dbus-glib, libxml2, sqlite, telepathy-glib, pkgconfig
-, dconf, makeWrapper, intltool, libxslt, gobject-introspection, dbus }:
+, dconf, makeWrapper, intltool, libxslt, gobject-introspection, dbus, telepathy-logger }:
 
 stdenv.mkDerivation rec {
   project = "telepathy-logger";
@@ -25,6 +25,8 @@ stdenv.mkDerivation rec {
       --prefix GIO_EXTRA_MODULES : "${stdenv.lib.getLib dconf}/lib/gio/modules" \
       --prefix XDG_DATA_DIRS : "$GSETTINGS_SCHEMAS_PATH"
   '';
+
+  passthru.GIO_TYPELIB_PATH = "${telepathy-logger}/lib/girepository-1.0";
 
   meta = with stdenv.lib; {
     description = "Logger service for Telepathy framework";

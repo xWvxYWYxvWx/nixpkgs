@@ -1,5 +1,5 @@
 { stdenv, fetchurl, dbus-glib, glib, python2, pkgconfig, libxslt
-, gobject-introspection, vala, glibcLocales }:
+, gobject-introspection, vala, glibcLocales, telepathy-glib }:
 
 stdenv.mkDerivation rec {
   name = "telepathy-glib-0.24.1";
@@ -26,7 +26,10 @@ stdenv.mkDerivation rec {
     substituteInPlace telepathy-glib/telepathy-glib.pc.in --replace Requires.private Requires
   '';
 
-  passthru.python = python2;
+  passthru = {
+    python = python2;
+    GI_TYPELIB_PATH = "${telepathy-glib}/lib/girepository-1.0";
+  };
 
   meta = with stdenv.lib; {
     homepage = "https://telepathy.freedesktop.org";
