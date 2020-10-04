@@ -13,7 +13,7 @@
 +++ b/daemon/gdm-manager.c
 @@ -145,7 +145,7 @@
          GError  *error;
- 
+
          error = NULL;
 -        res = g_spawn_command_line_sync ("plymouth --ping",
 +        res = g_spawn_command_line_sync ("@plymouth@/bin/plymouth --ping",
@@ -22,7 +22,7 @@
                  g_debug ("Could not ping plymouth: %s", error->message);
 @@ -163,7 +163,7 @@
          GError  *error;
- 
+
          error = NULL;
 -        res = g_spawn_command_line_sync ("plymouth deactivate",
 +        res = g_spawn_command_line_sync ("@plymouth@/bin/plymouth deactivate",
@@ -31,7 +31,7 @@
                  g_warning ("Could not deactivate plymouth: %s", error->message);
 @@ -178,7 +178,7 @@
          GError  *error;
- 
+
          error = NULL;
 -        res = g_spawn_command_line_async ("plymouth quit --retain-splash", &error);
 +        res = g_spawn_command_line_async ("@plymouth@/bin/plymouth quit --retain-splash", &error);
@@ -40,7 +40,7 @@
                  g_error_free (error);
 @@ -194,7 +194,7 @@
          GError  *error;
- 
+
          error = NULL;
 -        res = g_spawn_command_line_async ("plymouth quit", &error);
 +        res = g_spawn_command_line_async ("@plymouth@/bin/plymouth quit", &error);
@@ -65,18 +65,18 @@
                  if (run_launcher) {
                          if (is_x11) {
 -                                program = g_strdup_printf (LIBEXECDIR "/gdm-x-session %s\"dbus-run-session -- %s\"",
-+                                program = g_strdup_printf (LIBEXECDIR "/gdm-x-session %s\"@dbusLibs@/bin/dbus-run-session --dbus-daemon=@dbusLibs@/bin/dbus-daemon -- %s\"",
++                                program = g_strdup_printf (LIBEXECDIR "/gdm-x-session %s\"@dbus@/bin/dbus-run-session --dbus-daemon=@dbus@/bin/dbus-daemon -- %s\"",
                                                             register_session ? "--register-session " : "",
                                                             self->selected_program);
                          } else {
 -                                program = g_strdup_printf (LIBEXECDIR "/gdm-wayland-session %s\"dbus-run-session -- %s\"",
-+                                program = g_strdup_printf (LIBEXECDIR "/gdm-wayland-session %s\"@dbusLibs@/bin/dbus-run-session --dbus-daemon=@dbusLibs@/bin/dbus-daemon -- %s\"",
++                                program = g_strdup_printf (LIBEXECDIR "/gdm-wayland-session %s\"@dbus@/bin/dbus-run-session --dbus-daemon=@dbus@/bin/dbus-daemon -- %s\"",
                                                             register_session ? "--register-session " : "",
                                                             self->selected_program);
                          }
                  } else {
 -                        program = g_strdup_printf ("dbus-run-session -- %s",
-+                        program = g_strdup_printf ("@dbusLibs@/bin/dbus-run-session --dbus-daemon=@dbusLibs@/bin/dbus-daemon -- %s",
++                        program = g_strdup_printf ("@dbus@/bin/dbus-run-session --dbus-daemon=@dbus@/bin/dbus-daemon -- %s",
                                                     self->selected_program);
                  }
          }

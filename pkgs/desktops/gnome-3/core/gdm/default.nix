@@ -1,8 +1,10 @@
 { stdenv
 , fetchurl
+, fetchpatch
 , substituteAll
 , meson
 , ninja
+, python3
 , pkg-config
 , glib
 , itstool
@@ -24,9 +26,8 @@
 , librsvg
 , coreutils
 , xwayland
-, dbus_libs
+, dbus
 , nixos-icons
-, fetchpatch
 }:
 
 let
@@ -47,24 +48,17 @@ stdenv.mkDerivation rec {
   pname = "gdm";
   version = "3.38.0";
 
+  outputs = [ "out" "dev" ];
+
   src = fetchurl {
     url = "mirror://gnome/sources/gdm/${stdenv.lib.versions.majorMinor version}/${pname}-${version}.tar.xz";
     sha256 = "1fimhklb204rflz8k345756jikgbw8113hms3zlcwk6975f43m26";
   };
 
-  preConfigure =
-    # Upstream checks some common paths to find an `X` binary. We are NixOS.
-    # We are smarter.
-  ''
-    echo #!/bin/sh > build-aux/find-x-server.sh
-    echo "echo ${stdenv.lib.getBin xorg.xorgserver}/bin/X" >> build-aux/find-x-server.sh
-    patchShebangs build-aux/find-x-server.sh
-  '';
-
   mesonFlags = [
     "-Dgdm-xsession=true"
     # TODO: Setup a default-path? https://gitlab.gnome.org/GNOME/gdm/-/blob/6fc40ac6aa37c8ad87c32f0b1a5d813d34bf7770/meson_options.txt#L6
-    "-Dinitial-vt=7"
+    "-Dinitial-vt=${passthru.initialVT}"
     "-Dudev-dir=${placeholder "out"}/lib/udev/rules.d"
     "-Dsystemdsystemunitdir=${placeholder "out"}/lib/systemd/system"
     "-Dsystemduserunitdir=${placeholder "out"}/lib/systemd/user"
@@ -72,34 +66,42 @@ stdenv.mkDerivation rec {
   ];
 
   nativeBuildInputs = [
-    pkg-config
-    meson
-    itstool
     dconf
+    glib # for glib-compile-schemas
+    itstool
+    meson
     ninja
+    pkg-config
+    python3
   ];
+
   buildInputs = [
-    glib
     accountsservice
-    systemd
+    audit
+    glib
     gobject-introspection
-    libX11
     gtk3
+    keyutils
+    libX11
     libcanberra-gtk3
+    libselinux
     pam
     plymouth
-    libselinux
-    keyutils
-    audit
+    systemd
     xorg.libXdmcp
   ];
 
   patches = [
+    # https://gitlab.gnome.org/GNOME/gdm/-/merge_requests/112
+    (fetchpatch {
+      url = "https://gitlab.gnome.org/GNOME/gdm/-/commit/1d28d4b3568381b8590d2235737b924aefd1746c.patch";
+      sha256 = "ZUXKZS4T0o0hzrApxaqcR0txCRv5zBgqeQ9K9fLNX1o=";
+    })
+
     # Change hardcoded paths to nix store paths.
     (substituteAll {
       src = ./fix-paths.patch;
-      inherit coreutils plymouth xwayland;
-      dbusLibs = dbus_libs;
+      inherit coreutils plymouth xwayland dbus;
     })
 
     # The following patches implement certain environment variables in GDM which are set by
@@ -119,14 +121,18 @@ stdenv.mkDerivation rec {
     ./reset-environment.patch
   ];
 
-  # TODO: why is this suddenly necessary?
-  postInstall = ''
-    glib-compile-schemas $out/share/glib-2.0/schemas
+  postPatch = ''
+    patchShebangs build-aux/meson_post_install.py
+
+    # Upstream checks some common paths to find an `X` binary. We are NixOS.
+    # We are smarter.
+    echo #!/bin/sh > build-aux/find-x-server.sh
+    echo "echo ${stdenv.lib.getBin xorg.xorgserver}/bin/X" >> build-aux/find-x-server.sh
+    patchShebangs build-aux/find-x-server.sh
   '';
 
-  postFixup = ''
-    schema_dir=${glib.makeSchemaPath "$out" "${pname}-${version}"}
-    install -D ${override} $schema_dir/org.gnome.login-screen.gschema.override
+  preInstall = ''
+    install -D ${override} $out/share/glib-2.0/schemas/org.gnome.login-screen.gschema.override
   '';
 
   passthru = {
@@ -134,6 +140,10 @@ stdenv.mkDerivation rec {
       packageName = "gdm";
       attrPath = "gnome3.gdm";
     };
+
+    # Used in GDM NixOS module
+    # Don't remove.
+    initialVT = "7";
   };
 
   meta = with stdenv.lib; {
