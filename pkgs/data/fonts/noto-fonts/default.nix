@@ -75,18 +75,18 @@ in
     weights = "{Black,Condensed,Extra,Medium,Semi,Thin}*";
   };
 
-  noto-fonts-cjk = let zip = fetchzip {
+  noto-fonts-sans-cjk = let zip = fetchzip {
     url = let rev = "be6c059ac1587e556e2412b27f5155c8eb3ddbe6"; in
       "https://raw.githubusercontent.com/googlefonts/noto-cjk/${rev}/NotoSansCJK.ttc.zip";
     # __MACOSX...
     stripRoot = false;
     sha256 = "0ik4z2b15i0pghskgfm3adzb0h35fr4gyzvz3bq49hhkhn9h85vi";
   }; in stdenvNoCC.mkDerivation {
-    pname = "noto-fonts-cjk";
+    pname = "noto-fonts-sans-cjk";
     version = "2.001";
 
     buildCommand = ''
-      install -m444 -Dt $out/share/fonts/opentype/noto-cjk ${zip}/*.ttc
+      install -m444 -Dt $out/share/fonts/opentype/noto-sans-cjk ${zip}/*.ttc
     '';
 
     meta = with lib; {
@@ -107,6 +107,34 @@ in
       license = licenses.ofl;
       platforms = platforms.all;
       maintainers = with maintainers; [ mathnerd314 emily ];
+    };
+  };
+
+  noto-fonts-serif-cjk = let tgz = fetchTarball {
+    url = "https://github.com/googlefonts/noto-cjk/archive/v2017-06-01-serif-cjk-1-1.tar.gz";
+    sha256 = "1ma1n6hsqhpwbg20n1b6fr7h4ci83khda5rxfi5cn5l2vf7mvvlf";
+  }; in stdenvNoCC.mkDerivation {
+    pname = "noto-fonts-serif-cjk";
+    version = "1.1";
+    buildCommand = ''
+      install -m444 -Dt $out/share/fonts/opentype/noto-serif-cjk ${tgz}/*.ttc
+    '';
+
+    meta = with lib; {
+      description = "Beautiful and free fonts for CJK languages";
+      homepage = "https://www.google.com/get/noto/help/cjk/";
+      longDescription =
+      ''
+        Noto Serif CJK comprehensively cover Simplified Chinese, Traditional Chinese, Japanese,
+        and Korean in a unified font family. This includes the full coverage of CJK Ideographs
+        with variation support for 4 regions, Kangxi radicals, Japanese Kana, Korean Hangul,
+        and other CJK symbols and letters in the Basic Multilingual Plane of Unicode. It also
+        provides limited coverage of CJK Ideographs in Plane 2 of Unicode as necessary to
+        support standards from China and Japan.
+      '';
+      license = licenses.ofl;
+      platforms = platforms.all;
+      maintainers = with maintainers; [ ];
     };
   };
 
